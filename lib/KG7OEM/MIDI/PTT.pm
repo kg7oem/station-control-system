@@ -69,7 +69,7 @@ sub _mode_list_midi_devices {
     say "Port Client";
 
     foreach my $client_num (sort { $a <=> $b } keys %clients) {
-        printf("% 4d $clients{$client_num}\n", $client_num);
+        printf("% 4d %s\n", $client_num, $clients{$client_num});
     }
 
     return 0;
