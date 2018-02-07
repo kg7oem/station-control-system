@@ -1,0 +1,20 @@
+
+
+TODO
+
+  * retransmit delay - enforce minimum time between enabling transmit again
+
+    * avoid cycling the transmitter causing wear and possible damage
+
+  * compress pending messages
+
+    * process all events in the MIDI message queue then generate one final state change
+      if needed
+
+  * check that the desired PTT state matches the actual radio state
+
+    * periodically query the radio to get the state and change it if needed
+
+  * provide PTT state feedback to the operator
+
+  * curses interface
