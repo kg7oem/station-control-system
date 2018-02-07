@@ -18,3 +18,18 @@ TODO
   * provide PTT state feedback to the operator
 
   * curses interface
+
+  * handle case of terminal output blocking execution of the fault handling/watchdog logic
+
+    * an alarm() based watchdog around calls that update the UI could allow code to run
+      when this case happens
+
+    * the error handler needs to not update the UI (or print output) when running
+      as that would cause the error handler to block too
+
+    * another option would be to run the UI and the control logic in different threads/processes
+
+    * could also put a watchdog on the non-blocking IO loop which catches problems with UI updates
+      and other issues with the run loop. The runloop would then be considered reliable enough to
+      implement the other time based watchdogs. This could be done with a timer task in the
+      run loop that invokes alarm() to reset the watchdog.
