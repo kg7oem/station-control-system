@@ -64,6 +64,7 @@ sub _mode_list_midi_devices {
     my ($self) = @_;
 
     $self->_init_midi(0, 0);
+
     my %clients = MIDI::ALSA::listclients();
     my $my_client_num = MIDI::ALSA::id();
 
