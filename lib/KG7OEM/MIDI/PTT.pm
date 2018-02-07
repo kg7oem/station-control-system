@@ -65,10 +65,12 @@ sub _mode_list_midi_devices {
 
     $self->_init_midi(0, 0);
     my %clients = MIDI::ALSA::listclients();
+    my $my_client_num = MIDI::ALSA::id();
 
     say "Port Client";
 
     foreach my $client_num (sort { $a <=> $b } keys %clients) {
+        next if $client_num == $my_client_num;
         printf("% 4d %s\n", $client_num, $clients{$client_num});
     }
 
