@@ -6,6 +6,8 @@ use Moo;
 use Getopt::Long;
 use MIDI::ALSA(':CONSTS');
 
+use KG7OEM::MIDI::Operator;
+
 has client_name => (
     is => 'ro',
     # TODO support specifying client name via command line
@@ -13,12 +15,22 @@ has client_name => (
     builder => sub { 'MIDI PTT DEV' },
 );
 
+has _args => (
+    is => 'rwp',
+);
+
 sub run {
     my ($self) = @_;
-    my $args = $self->_parse_cli;
+    my $args = $self->_set__args($self->_parse_cli);
 
     if ($args->{list}) {
         return $self->_mode_list_midi_devices;
+    } elsif ($args->{operator}) {
+        # operator mode runs at the remote control station
+        return $self->_mode_operator;
+    } elsif ($args->{radio}) {
+        die "radio mode is not implemented";
+        #return $self->_mode_radio;
     }
 
     # If we make it here it is an unhandled case and something
@@ -31,6 +43,8 @@ sub _parse_cli {
 
     GetOptions(
         'list|l' => \$args{list},
+        'operator|o' => \$args{operator},
+        'pedal|p=s' => \$args{pedal},
     ) or die "Could not parse command line\n";
 
     # TODO perform validation here
@@ -57,6 +71,8 @@ sub _init_midi {
         die "Could not create ALSA MIDI client";
     }
 
+    MIDI::ALSA::start();
+
     return;
 }
 
@@ -76,6 +92,21 @@ sub _mode_list_midi_devices {
     }
 
     return 0;
+}
+
+sub _mode_operator {
+    my ($self) = @_;
+    my $pedal_device = $self->_args->{pedal};
+
+    die "pedal_device was not defined" unless defined $pedal_device;
+
+    $self->_init_midi(1, 1);
+
+    unless (MIDI::ALSA::connectfrom(0, $pedal_device, 0)) {
+       die "Could not connect to pedal device: '$pedal_device'";
+    }
+
+    return KG7OEM::MIDI::Operator->new->run;
 }
 
 1;
