@@ -6,6 +6,7 @@ package KG7OEM::MIDI::Operator;
 use Moo;
 
 use KG7OEM::MIDI::Runloop;
+use KG7OEM::MIDI::Events;
 
 # the operator interface is offline if SENSE has failed (if in use)
 # or the radio side of this pair is not providing feedback
@@ -60,11 +61,22 @@ sub run {
     my $midi_sense_timeout = $self->sense_timeout;
     my $loop = KG7OEM::MIDI::Runloop->new;
 
+    $loop->alsa_midi(on_events => sub { $self->_handle_midi_events(@_) });
+
     return $loop->run;
 }
 
-sub _state_offline {
-    my ($self) = @_;
+sub _handle_midi_events {
+    my ($self, @events) = @_;
+
+    print "ALSA MIDI Events:\n";
+
+    foreach my $event (@events) {
+        my $event_name = KG7OEM::MIDI::Events->get_name($event->[0]);
+        print "\t$event_name\n";
+    }
+
+    return;
 }
 
 1;
