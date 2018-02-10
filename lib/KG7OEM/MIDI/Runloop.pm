@@ -17,8 +17,11 @@ has _io => (
 # timeout in floating point seconds for the runloop watchdog or 0 to disable
 # the watchdog
 has watchdog_timeout => (
-    is => 'ro',
-    default => 1 / 20,
+    is => 'lazy',
+);
+
+has _watchdog_update => (
+    is => 'lazy',
 );
 
 sub BUILD {
@@ -34,6 +37,15 @@ sub BUILD {
 
 sub _build__io {
     return IO::Async::Loop->new;
+}
+
+sub _build_watchdog_timeout {
+    return 1 / 20;
+}
+
+sub _build__watchdog_update {
+    my ($self) = @_;
+    return $self->watchdog_timeout / 2;
 }
 
 # FIXME there is some rather complex handling that should be
@@ -52,6 +64,7 @@ sub _validate_alarm_handler {
 sub _setup_watchdog {
     my ($self) = @_;
     my $timeout = $self->watchdog_timeout;
+    my $update = $self->_watchdog_update;
 
     if (defined $SIG{ALRM}) {
         die "alarm handler was in use when setting up runloop watchdog";
@@ -60,7 +73,7 @@ sub _setup_watchdog {
     $SIG{ALRM} = \&_alarm_handler;
 
     # periodically reset the runloop watchdog
-    $self->periodic_timer(interval => $timeout * .9, on_tick => sub { alarm($timeout) });
+    $self->periodic_timer(interval => $update, on_tick => sub { alarm($timeout) });
     # periodically ensure the watchdog alarm handler is set
     $self->periodic_timer(interval => 1, on_tick => sub { $self->_validate_alarm_handler });
 
@@ -70,6 +83,14 @@ sub _setup_watchdog {
 sub run {
     my ($self) = @_;
     my $watchdog_timeout = $self->watchdog_timeout;
+
+    # set up the first alarm right before the runloop
+    # starts so the watchdog is not dependent on the
+    # timer starting and invoking alarm() for the first
+    # time
+    if ($watchdog_timeout) {
+        alarm($watchdog_timeout);
+    }
 
     return $self->_io->run;
 }
