@@ -18,8 +18,7 @@ use IO::Handle;
 
 # The instance of IO::Async::Loop that is in use
 has _io => (
-    is => 'ro',
-    builder => 1,
+    is => 'lazy',
     handles => [qw(stop)],
 );
 
