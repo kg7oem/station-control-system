@@ -1,7 +1,5 @@
 package KG7OEM::MIDI::Operator;
 
-# TODO rename to ::ControlPoint
-
 use Moo;
 
 use MIDI::ALSA(':CONSTS');
@@ -26,6 +24,14 @@ has ptt_device => (
     is => 'lazy',
 );
 
+# FIXME Move the ptt_set_point into the PTTInput
+# package, delegate out to that instance to get
+# the value, and no longer set it in this
+# package. The ptt_enable and ptt_disable events
+# are still useful to send a state change message
+# immediately while querying the PTTInput instance
+# is used to send the periodic state messages.
+#
 # desired PTT state
 has ptt_set_point => (
     is => 'rwp',
@@ -47,6 +53,15 @@ sub _build_ptt_device {
     KG7OEM::MIDI::PTTInput->new(
         on_start => sub { $self->_handle_ptt_device_start },
         on_stop => sub { $self->_handle_ptt_device_stop },
+        # FIXME make enable/disable event handlers immediately
+        # send out a PTT state message to the radio side
+        # and update the timer that sends the PTT state so the next
+        # message is after the correct duration - the current PTT
+        # input state comes from the PTTInput object
+        #
+        # TODO decide if the enable/disable handlers should check
+        # the current PTT state stored in PTTInput and generate
+        # a fault if there is a discrepency
         on_ptt_enable => sub { $self->_set_ptt_set_point(1) },
         on_ptt_disable => sub { $self->_set_ptt_set_point(0) },
     )->start;
@@ -80,6 +95,10 @@ sub _handle_ptt_device_start {
 sub _handle_ptt_device_stop {
     my ($self) = @_;
 
+    # FIXME follow the same logic as the enable/disable event
+    # handlers and send a message immediately and reset the
+    # state transfer timer so the next message is after the
+    # appropriate time
     $self->_set_ptt_set_point(0);
 
     return;
