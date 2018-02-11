@@ -1,5 +1,14 @@
 
 
+  * Have a message that indicates when transmit should start and messages
+    that indicate when transmission should continue to add fault tolerance
+    to corruption in messages during transit
+
+  * Maybe have a command that also indicates the PTT should be released
+
+  * ethernet based data acqusition system for doing ADC/DAC instead of using
+    and USB audio interface and single board computer
+
 TODO
 
   * retransmit delay - enforce minimum time between enabling transmit again
@@ -15,7 +24,13 @@ TODO
 
     * periodically query the radio to get the state and change it if needed
 
+    * if the radio state does not match the desired state then fix that condition
+
+    * if the state can't be corrected then power off the radio
+
   * provide PTT state feedback to the operator
+
+    * provide audio feedback as well as visual feedback
 
   * curses interface
 
