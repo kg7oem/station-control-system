@@ -4,6 +4,9 @@ package KG7OEM::MIDI::Operator;
 
 use Moo;
 
+use MIDI::ALSA(':CONSTS');
+use Time::HiRes qw(time);
+
 use KG7OEM::MIDI::Runloop;
 use KG7OEM::MIDI::Events;
 
@@ -63,22 +66,32 @@ sub run {
     # FIXME the pending MIDI events should be drained and ignored
     # as part of initialization in case anything is hanging around
     # in the buffer that is ancient history
-    $loop->alsa_midi(on_events => sub { $self->_handle_midi_events(@_) });
+    $loop->alsa_midi(on_events => sub { $self->_handle_midi(@_) });
 
     return $loop->run;
 }
 
-sub _handle_midi_events {
+sub _handle_midi {
     my ($self, @events) = @_;
 
-    print "ALSA MIDI Events:\n";
-
     foreach my $event (@events) {
-        my $event_name = KG7OEM::MIDI::Events->get_name($event->[0]);
-        print "\t$event_name\n";
+        my $type = $event->[0];
+
+        if ($type == SND_SEQ_EVENT_SENSING) {
+            $self->_handle_midi_sense(@$event);
+        } else {
+            my $type_name = KG7OEM::MIDI::Events->get_name($type);
+            print "Got unknown MIDI message: $type_name\n";
+        }
     }
 
     return;
+}
+
+sub _handle_midi_sense {
+    my ($self, @data) = @_;
+
+    print scalar(time), " Got MIDI SENSE\n";
 }
 
 1;
