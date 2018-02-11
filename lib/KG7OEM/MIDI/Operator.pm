@@ -1,7 +1,6 @@
 package KG7OEM::MIDI::Operator;
 
-# TODO is it better to call this side of the remote operation
-# system the control point?
+# TODO rename to ::ControlPoint
 
 use Moo;
 
@@ -61,6 +60,9 @@ sub run {
     my $midi_sense_timeout = $self->sense_timeout;
     my $loop = KG7OEM::MIDI::Runloop->new;
 
+    # FIXME the pending MIDI events should be drained and ignored
+    # as part of initialization in case anything is hanging around
+    # in the buffer that is ancient history
     $loop->alsa_midi(on_events => sub { $self->_handle_midi_events(@_) });
 
     return $loop->run;

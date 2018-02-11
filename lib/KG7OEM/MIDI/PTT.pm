@@ -8,6 +8,7 @@ use MIDI::ALSA(':CONSTS');
 
 use KG7OEM::MIDI::Operator;
 
+# The name of the program in the ALSA client list
 has client_name => (
     is => 'ro',
     # TODO support specifying client name via command line
@@ -15,6 +16,7 @@ has client_name => (
     builder => sub { 'MIDI PTT DEV' },
 );
 
+# command line arguments as a hash ref
 has _args => (
     is => 'rwp',
 );

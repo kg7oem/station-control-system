@@ -1,5 +1,12 @@
 package KG7OEM::MIDI::Runloop;
 
+# TODO
+#
+# change autostart to auto_start
+#
+# create auto_add which is like auto_start but for invoking add() to the
+# runloop; allow auto_add to be controlled like auto_start
+
 use Moo;
 
 use Time::HiRes qw(alarm);
@@ -9,6 +16,7 @@ use IO::Async::Timer::Periodic;
 use IO::Async::Handle;
 use IO::Handle;
 
+# The instance of IO::Async::Loop that is in use
 has _io => (
     is => 'ro',
     builder => 1,
@@ -21,6 +29,8 @@ has watchdog_timeout => (
     is => 'lazy',
 );
 
+# how frequently the runloop watchdog should be reset in floating point
+# seconds
 has _watchdog_update => (
     is => 'lazy',
 );
@@ -124,6 +134,7 @@ sub periodic_timer {
 
 sub handle {
     my ($self, %args) = @_;
+    # FIXME this should call add() on the runloop automatically
     return IO::Async::Handle->new(%args);
 }
 
