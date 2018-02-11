@@ -6,92 +6,89 @@ use Moo;
 
 use MIDI::ALSA(':CONSTS');
 use Time::HiRes qw(time);
+use Const::Fast;
 
-use KG7OEM::MIDI::Runloop;
+use KG7OEM::MIDI::Runloop 'get_loop';
 use KG7OEM::MIDI::Events;
+use KG7OEM::MIDI::PTTInput;
 
-# the operator interface is offline if SENSE has failed (if in use)
-# or the radio side of this pair is not providing feedback
-#
-# The states and transitions are
-# offline -> sense ok -> radio ok -> online
-# offline -> radio ok -> online (when SENSE is not being used)
-# online -> sense ok (when the radio side has failed but sense is ok)
-# online -> offline (when the radio side has failed and there is no sense)
-#
-# when exiting the online state transmit needs to be disabled
+const my $STATE_WAITING => 'waiting';
+const my $STATE_READY => 'ready';
 
-# true if the system is currently online or false otherwise
-has online => (
+has current_state => (
+    is => 'rwp',
+    isa => \&_validate_current_state,
+    default => $STATE_WAITING,
+);
+
+# control point PTT input event generator
+has ptt_device => (
+    is => 'lazy',
+);
+
+# desired PTT state
+has ptt_set_point => (
     is => 'rwp',
     default => 0,
 );
 
-# true if MIDI SENSE indicates a device is connected
-# false if no SENSE is detected
-# undef if SENSE is not being used
-has sense_ok => (
-    is => 'rwp',
-    default => undef,
-);
+sub _validate_current_state {
+    my ($state_name) = @_;
 
-# the maximum time between MIDI SENSE messages before
-# a failure is declared or 0 to disable the SENSE watchdog
-has sense_timeout => (
-    is => 'ro',
-    default => .3,
-);
+    return if $state_name eq $STATE_WAITING;
+    return if $state_name eq $STATE_READY;
 
-has radio_ok => (
-    is => 'rwp',
-    default => 0,
-);
+    die "invalid state name: $state_name";
+}
 
-# the current desired PTT state - true if
-# transmitting should be happening
-has transmit_enable => (
-    is => 'rwp',
-    default => 0,
-);
+sub _build_ptt_device {
+    my ($self) = @_;
 
-has _sense_watchdog_timer => (
-    is => 'rwp',
-);
+    KG7OEM::MIDI::PTTInput->new(
+        on_start => sub { $self->_handle_ptt_device_start },
+        on_stop => sub { $self->_handle_ptt_device_stop },
+        on_ptt_enable => sub { $self->_set_ptt_set_point(1) },
+        on_ptt_disable => sub { $self->_set_ptt_set_point(0) },
+    )->start;
+}
 
 sub run {
     my ($self) = @_;
-    my $midi_sense_timeout = $self->sense_timeout;
-    my $loop = KG7OEM::MIDI::Runloop->new;
+    my $loop = get_loop();
+    my $ptt_device = $self->ptt_device;
 
-    # FIXME the pending MIDI events should be drained and ignored
-    # as part of initialization in case anything is hanging around
-    # in the buffer that is ancient history
-    $loop->alsa_midi(on_events => sub { $self->_handle_midi(@_) });
+    $loop->add($ptt_device);
+
+#    $loop->periodic_timer(interval => .1, on_tick => sub { $self->_send_updates });
 
     return $loop->run;
 }
 
-sub _handle_midi {
-    my ($self, @events) = @_;
+sub _handle_ptt_device_start {
+    my ($self) = @_;
+    my $previous_state = $self->current_state;
 
-    foreach my $event (@events) {
-        my $type = $event->[0];
-
-        if ($type == SND_SEQ_EVENT_SENSING) {
-            $self->_handle_midi_sense(@$event);
-        } else {
-            my $type_name = KG7OEM::MIDI::Events->get_name($type);
-            print "Got unknown MIDI message: $type_name\n";
-        }
+    if ($previous_state eq $STATE_READY) {
+        die "got start event from PTT input while control point was ready";
     }
+
+    $self->_set_current_state($STATE_READY);
 
     return;
 }
 
-sub _handle_midi_sense {
-    my ($self, @data) = @_;
+sub _handle_ptt_device_stop {
+    my ($self) = @_;
 
-    print scalar(time), " Got MIDI SENSE\n";
+    $self->_set_ptt_set_point(0);
+
+    return;
+}
+
+sub _send_updates {
+    my ($self) = @_;
+
+#    MIDI->sendevent('PTT', $self->ptt_set_point);
 }
 
 1;

@@ -9,6 +9,10 @@ package KG7OEM::MIDI::Runloop;
 
 use Moo;
 
+use Sub::Exporter -setup => {
+    exports => [qw( get_loop )],
+};
+
 use Time::HiRes qw(alarm);
 use IO::Async::Loop;
 use IO::Async::Timer::Countdown;
@@ -16,10 +20,21 @@ use IO::Async::Timer::Periodic;
 use IO::Async::Handle;
 use IO::Handle;
 
+# the instance of this class that is used
+# globally
+our $SINGLETON;
+
 # The instance of IO::Async::Loop that is in use
 has _io => (
     is => 'lazy',
-    handles => [qw(stop)],
+    handles => [qw(stop add)],
+);
+
+# true if the runloop is currently or was prevously running
+# false otherwise
+has started => (
+    is => 'rwp',
+    default => 0,
 );
 
 # timeout in floating point seconds for the runloop watchdog or 0 to disable
@@ -34,15 +49,20 @@ has _watchdog_update => (
     is => 'lazy',
 );
 
+# the constructor returns the singleton runloop instance
+# if it exists or initializes it otherwise
+around new => sub {
+    my ($orig, $self, @args) = @_;
+
+    return $SINGLETON if defined $SINGLETON;
+    return $SINGLETON = $self->$orig(@args);
+};
+
 sub BUILD {
     my ($self) = @_;
     # make IO::Async initialize during construction of this object
     # so any failures will show up early
     $self->_io;
-
-    if ($self->watchdog_timeout) {
-        $self->_setup_watchdog;
-    }
 }
 
 sub _build__io {
@@ -56,6 +76,14 @@ sub _build_watchdog_timeout {
 sub _build__watchdog_update {
     my ($self) = @_;
     return $self->watchdog_timeout / 2;
+}
+
+# importable function for packages that want
+# to use the runloop
+sub get_loop {
+    return $SINGLETON if defined $SINGLETON;
+    # FIXME this won't subclass right
+    return __PACKAGE__->new;
 }
 
 # FIXME there is some rather complex handling that should be
@@ -94,14 +122,16 @@ sub run {
     my ($self) = @_;
     my $watchdog_timeout = $self->watchdog_timeout;
 
-    # set up the first alarm right before the runloop
-    # starts so the watchdog is not dependent on the
-    # timer starting and invoking alarm() for the first
-    # time
+    if ($self->started) {
+        die "attempt to start runloop twice";
+    }
+
     if ($watchdog_timeout) {
+        $self->_setup_watchdog;
         alarm($watchdog_timeout);
     }
 
+    $self->_set_started(1);
     return $self->_io->run;
 }
 
