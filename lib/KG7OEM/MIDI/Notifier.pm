@@ -20,6 +20,21 @@ sub make_variant {
     # the start() method returns $self for call chaining
     install start => sub { return $_[0] };
 
+    # the standard IO::Async can_event() method tries
+    # to invoke setter methods if this behavior is not
+    # changed
+    install can_event => sub {
+        my $self = shift;
+        my ( $event_name ) = @_;
+
+        return $self->{$event_name};
+    };
+
+    install emit => sub {
+        my ($self, $name, @args) = @_;
+        $self->maybe_invoke_event($name, @args);
+    };
+
     around configure => sub {
         my ($orig, $self, %args) = @_;
 

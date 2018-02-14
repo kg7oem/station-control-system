@@ -27,7 +27,7 @@ our $SINGLETON;
 # The instance of IO::Async::Loop that is in use
 has _io => (
     is => 'lazy',
-    handles => [qw(stop add)],
+    handles => [qw(add later remove stop)],
 );
 
 # true if the runloop is currently or was prevously running
@@ -163,48 +163,10 @@ sub periodic_timer {
 
 sub handle {
     my ($self, %args) = @_;
-    # FIXME this should call add() on the runloop automatically
-    return IO::Async::Handle->new(%args);
-}
+    my $handle = IO::Async::Handle->new(%args);
 
-sub alsa_midi {
-    my ($self, %args) = @_;
-
-    if (MIDI::ALSA::id() == 0) {
-        die "ALSA MIDI is not yet initialized";
-    }
-
-    unless (exists $args{on_events}) {
-        die "on_ready is a required argument";
-    }
-
-    unless (ref($args{on_events}) eq 'CODE') {
-        die "on_ready must be a subref";
-    }
-
-    my $handle = $self->handle(
-        read_handle => IO::Handle->new_from_fd(MIDI::ALSA::fd(), '<'),
-        on_read_ready => sub { _handle_alsa_ready($args{on_events}, @_) },
-    );
-
-    $self->_io->add($handle);
-
+    $self->add($handle);
     return $handle;
-}
-
-sub _handle_alsa_ready {
-    my ($cb, $handle) = @_;
-    my @events;
-
-    # read all pending MIDI messages and provide the entire
-    # list to the event handler
-    while(MIDI::ALSA::inputpending()) {
-        push(@events, [ MIDI::ALSA::input() ]);
-    }
-
-    $cb->(@events);
-
-    return;
 }
 
 1;
