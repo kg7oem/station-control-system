@@ -5,9 +5,8 @@ use v5.10;
 use KG7OEM::MIDI::PTTInput;
 use KG7OEM::MIDI::Runloop 'get_loop';
 
-MIDI::ALSA::client(1, 1, 1);
+MIDI::ALSA::client("a name", 1, 1, 1);
 MIDI::ALSA::connectfrom(0, 'USB Midi', 0);
-MIDI::ALSA::start();
 
 my $ptt = KG7OEM::MIDI::PTTInput->new(
     status => 'unready',

@@ -7,6 +7,7 @@ use Const::Fast;
 use curry;
 use IO::Handle;
 use MIDI::ALSA(':CONSTS');
+use Time::HiRes 'time';
 
 use KG7OEM::MIDI::ALSA::Notifier;
 use KG7OEM::MIDI::Runloop 'get_loop';
@@ -47,6 +48,10 @@ has _alsa_notifier => (
     is => 'lazy',
 );
 
+has _started_at => (
+    is => 'rwp',
+);
+
 sub _build__alsa_notifier {
     my ($self) = @_;
 
@@ -77,6 +82,9 @@ sub BUILD {
 
     $self->_alsa_notifier;
 
+    MIDI::ALSA::start();
+    $self->_set__started_at(time);
+
     return;
 }
 
@@ -103,6 +111,7 @@ sub _drain {
 sub _handle_read_ready {
     my ($self) = @_;
     my $subscribers = $self->_subscribers;
+    my $started_at = $self->_started_at;
     my %seen_ports;
 
     while(MIDI::ALSA::inputpending()) {
@@ -112,6 +121,11 @@ sub _handle_read_ready {
         my $notifiers = $subscribers->{$port};
 
         next unless $notifiers;
+
+        # convert from time since the ALSA queue was
+        # started to an absolute timestamp of when
+        # the event happened
+        $envelope[$ALSA_MESSAGE_TIME] += $started_at;
 
         unless ($seen_ports{$port}) {
             $seen_ports{$port} = 1;
