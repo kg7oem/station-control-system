@@ -46,7 +46,8 @@ sub make_variant {
 
     install emit => sub {
         my ($self, $name, @args) = @_;
-        $self->maybe_invoke_event($name, @args);
+        die "name was not specified" unless defined $name;
+        $self->maybe_invoke_event("on_$name", @args);
     };
 
     around configure => sub {

@@ -121,11 +121,11 @@ sub _handle_end {
     # always send the PTT change event first so that the transmit
     # stop logic is handled before the fault handling logic
     if ($self->ptt != $begin->{ptt}) {
-        $self->emit('on_ptt_change', $self->ptt, $begin->{ptt});
+        $self->emit('ptt_change', $self->ptt, $begin->{ptt});
     }
 
     if ($self->status ne $begin->{status}) {
-        $self->emit('on_status_change', $self->status, $begin->{status});
+        $self->emit('status_change', $self->status, $begin->{status});
     }
 
     $self->_begin_state(undef);
