@@ -10,6 +10,7 @@ MIDI::ALSA::connectfrom(0, 'USB Midi', 0);
 MIDI::ALSA::start();
 
 my $ptt = KG7OEM::MIDI::PTTInput->new(
+    status => 'unready',
     on_status_change => sub { say "Got new status: '$_[1]' old status: '$_[2]'" },
     on_ptt_change => sub { say "Got PTT change: '$_[1]' old: '$_[2]'" },
 );

@@ -2,6 +2,7 @@ package KG7OEM::MIDI::Notifier;
 
 use strict;
 use warnings;
+use v5.10;
 
 use Package::Variant
     importing => [ 'Moo' ],
@@ -10,12 +11,25 @@ use Package::Variant
 sub make_variant {
     my ($class, $target_package, @given_events) = @_;
     my @all_events = ('error', @given_events);
+    my %event_names = map { my $n = "on_$_"; $n => 1 } @all_events;
 
     extends 'IO::Async::Notifier';
 
     foreach my $event_name (@all_events) {
         has "on_$event_name" => ( is => 'rwp', predicate => 1 );
     }
+
+    # protect the new() method from attribute names passed
+    # to the constructor
+    install FOREIGNBUILDARGS => sub {
+        my ($class, %args) = @_;
+
+        foreach my $arg_name (keys %args) {
+            delete $args{$arg_name} unless exists $event_names{$arg_name};
+        }
+
+        return %args;
+    };
 
     # the start() method returns $self for call chaining
     install start => sub { return $_[0] };

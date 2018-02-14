@@ -12,5 +12,4 @@ extends Notifier(qw(
     message
 ));
 
-
 1;
